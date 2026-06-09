@@ -1,0 +1,108 @@
+name: Automatic Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --allowed-tools "Bash(gh issue *),Bash(gh label *),Read"
+            --max-turns 6
+          prompt: |
+            You are an automated issue triage assistant for a vanilla JavaScript Tetris game repository.
+
+            ## Step 1 — Fetch issue content
+            Run this command and parse the JSON output:
+              gh issue view ${{ github.event.issue.number }} --json title,body,labels --repo ${{ github.repository }}
+
+            ## Step 2 — Read codebase for context
+            Read the following files to understand the code before making any references:
+            - game.js
+            - index.html
+            - style.css
+            - CLAUDE.md
+
+            ## Step 3 — Classify the issue
+            Choose a primary label (pick exactly one):
+            - bug         — something is broken or behaves incorrectly
+            - enhancement — new feature or improvement request
+            - question    — user asking how something works
+            - documentation — docs are missing or incorrect
+            - good first issue — simple, well-scoped, beginner-friendly change
+
+            Choose domain labels (pick any that apply):
+            - gameplay    — game mechanics, piece movement, rotation, scoring, line clearing, collision, speed
+            - performance — rendering speed, frame rate, animation loop
+            - ui          — visual appearance, layout, CSS, canvas style
+
+            ## Step 4 — Ensure custom labels exist (idempotent, --force is a no-op if label already exists)
+            gh label create gameplay    --color 0075ca --description "Game mechanics and rules"  --force --repo ${{ github.repository }}
+            gh label create performance --color e4e669 --description "Performance and rendering" --force --repo ${{ github.repository }}
+            gh label create ui          --color d93f0b --description "Visual appearance/styling" --force --repo ${{ github.repository }}
+
+            ## Step 5 — Apply labels
+            gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2" --repo ${{ github.repository }}
+            (Replace label1,label2 with the actual labels you selected.)
+
+            ## Step 6 — Post or update the diagnostic comment
+
+            The current event is: ${{ github.event.action }}
+
+            If event is "opened":
+              Post a new comment using:
+                gh issue comment ${{ github.event.issue.number }} --body "..." --repo ${{ github.repository }}
+
+            If event is "edited":
+              First check for an existing triage comment:
+                gh issue view ${{ github.event.issue.number }} --json comments --repo ${{ github.repository }}
+              Find a comment whose body starts with exactly: <!-- issue-triage-bot -->
+              - If found: update it using: gh issue comment <databaseId> --edit --body "..."  --repo ${{ github.repository }}
+              - If not found: post a new comment as above.
+
+            ## Comment format
+            The comment body MUST start with the HTML marker on the first line so it can be found on future edits.
+            Use this exact structure:
+
+            <!-- issue-triage-bot -->
+            ## Triage Report
+
+            **Classification:** <primary label>
+            **Domain:** <domain labels, or "general" if none apply>
+            **Effort:** Low | Medium | High  _(Low <2 h · Medium 2–8 h · High >8 h)_
+            **Severity:** Critical | Normal | Low  _(for bugs only; use Normal for non-bugs)_
+
+            ### Relevant code
+            | File | Location | Why relevant |
+            |------|----------|-------------|
+            | `game.js` | `functionName()` ~line N | reason |
+
+            ### Suggested approach
+            - Step 1 with `file.js:line` references where helpful
+            - Step 2
+            - Step 3
+
+            ### Notes
+            _(Omit this section entirely if there is nothing noteworthy to add.)_
