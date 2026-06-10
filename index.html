@@ -13,6 +13,18 @@
       <canvas id="board" width="300" height="600"></canvas>
 
       <aside class="panel">
+        <div id="combo-display"></div>
+
+        <div class="panel-section">
+          <span class="label">MODE</span>
+          <span id="mode-label" class="mode-label-text">CLASSIC</span>
+        </div>
+
+        <div class="panel-section" id="sprint-section">
+          <span class="label">TIME</span>
+          <span class="value" id="sprint-timer">2:00</span>
+        </div>
+
         <div class="panel-section">
           <span class="label">SCORE</span>
           <span class="value" id="score">0</span>
@@ -27,6 +39,18 @@
         </div>
 
         <div class="panel-section">
+          <span class="label" id="energy-label">ENERGY</span>
+          <div id="energy-bar-wrap">
+            <div id="energy-bar"></div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">HOLD <span class="key-hint">C / ⇧</span></span>
+          <canvas id="hold-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
@@ -35,20 +59,60 @@
           <span class="label">CONTROLS</span>
           <ul>
             <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-            <li><kbd>↑</kbd> rotar</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
+            <li><kbd>C</kbd><kbd>⇧</kbd> hold</li>
+            <li><kbd>Q</kbd> habilidad</li>
             <li><kbd>P</kbd> pausa</li>
           </ul>
         </div>
       </aside>
     </div>
 
+    <div id="powerup-announce"></div>
+
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div id="ability-menu" class="overlay hidden">
+      <div class="overlay-box ability-box">
+        <p class="overlay-secondary-title">ELIGE HABILIDAD</p>
+        <div class="ability-buttons">
+          <button class="ability-btn" data-ability="1"><kbd>1</kbd> Ver 5 siguientes</button>
+          <button class="ability-btn" data-ability="2"><kbd>2</kbd> Cambiar pieza</button>
+          <button class="ability-btn" data-ability="3"><kbd>3</kbd> Cámara lenta (10s)</button>
+          <button class="ability-btn" data-ability="4"><kbd>4</kbd> Deshacer última</button>
+          <button class="ability-btn" data-ability="5"><kbd>5</kbd> Desbloquear hold</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mode-select" class="overlay">
+      <div class="overlay-box mode-box">
+        <p class="overlay-secondary-title">SELECCIONAR MODO</p>
+        <div class="mode-buttons">
+          <button class="mode-btn" data-mode="classic">
+            CLASSIC <span class="mode-desc">Juego estándar</span>
+          </button>
+          <button class="mode-btn mode-sprint" data-mode="sprint">
+            SPRINT <span class="mode-desc">40 líneas en 2 min</span>
+          </button>
+          <button class="mode-btn mode-survival" data-mode="survival">
+            SURVIVAL <span class="mode-desc">Basura sube cada 10s</span>
+          </button>
+          <button class="mode-btn mode-invisible" data-mode="invisible">
+            INVISIBLE <span class="mode-desc">Piezas se ocultan al caer</span>
+          </button>
+          <button class="mode-btn mode-chaos" data-mode="chaos">
+            CHAOS <span class="mode-desc">Rotación se invierte cada 20s</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
