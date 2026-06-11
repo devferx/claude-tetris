@@ -64,7 +64,7 @@
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>C</kbd><kbd>⇧</kbd> hold</li>
             <li><kbd>Q</kbd> habilidad</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -77,6 +77,32 @@
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div id="pause-menu" class="overlay hidden">
+      <div class="overlay-box pause-box">
+        <p class="overlay-secondary-title">PAUSA</p>
+        <div class="pause-buttons">
+          <button id="pause-resume-btn">&#9654; REANUDAR</button>
+          <button id="pause-restart-btn">&#8634; REINICIAR</button>
+          <button id="pause-controls-btn">&#9000; CONTROLES</button>
+          <div class="pause-level-row">
+            <span>NIVEL INICIO</span>
+            <select id="starting-level-select"></select>
+          </div>
+        </div>
+        <div id="pause-controls-list" class="hidden">
+          <ul>
+            <li><kbd>&#8592;</kbd><kbd>&#8594;</kbd> mover</li>
+            <li><kbd>&#8593;</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>&#8595;</kbd> bajar</li>
+            <li><kbd>Space</kbd> ca&#237;da r&#225;pida</li>
+            <li><kbd>C</kbd><kbd>&#8679;</kbd> hold</li>
+            <li><kbd>Q</kbd> habilidad</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+          </ul>
+        </div>
       </div>
     </div>
 
