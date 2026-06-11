@@ -5,22 +5,19 @@ const ROWS = 20;
 const BLOCK = 30;
 const MAX_ENERGY = 100;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // 1 I
-  '#ffd54f', // 2 O
-  '#ba68c8', // 3 T
-  '#81c784', // 4 S
-  '#e57373', // 5 Z
-  '#7986cb', // 6 J
-  '#ffb74d', // 7 L
-  '#f48fb1', // 8 + cross
-  '#80cbc4', // 9 U
-  '#ce93d8', // 10 Y
-  '#fff176', // 11 1×1
-  '#ff8a65', // 12 hollow 3×3
-  null,      // 13 power-up (rendered as rainbow)
-];
+const THEME_COLORS = {
+  retro:  [null,'#4dd0e1','#ffd54f','#ba68c8','#81c784','#e57373','#7986cb','#ffb74d','#f48fb1','#80cbc4','#ce93d8','#fff176','#ff8a65',null],
+  neon:   [null,'#00fff5','#ffe600','#df00ff','#00ff6a','#ff0055','#2979ff','#ff6d00','#ff80ab','#00e5ff','#ea80fc','#ffff00','#ff3d00',null],
+  pastel: [null,'#b2ebf2','#fff9c4','#e1bee7','#c8e6c9','#ffcdd2','#c5cae9','#ffe0b2','#fce4ec','#b2dfdb','#f3e5f5','#fffde7','#fbe9e7',null],
+};
+
+let currentTheme = 'retro';
+
+function getThemeColor(colorIndex) {
+  if (colorIndex === 13) return `hsl(${(Date.now() / 15) % 360}, 100%, 60%)`;
+  const palette = THEME_COLORS[currentTheme] || THEME_COLORS.retro;
+  return palette[colorIndex] || null;
+}
 
 const PIECES = [
   null,
@@ -449,23 +446,49 @@ function showAnnounce(text) {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  let color;
-  if (colorIndex === 13) {
-    color = `hsl(${(Date.now() / 15) % 360}, 100%, 60%)`;
-  } else {
-    color = COLORS[colorIndex];
-    if (!color) return;
-  }
+  const color = getThemeColor(colorIndex);
+  if (!color) return;
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  context.fillStyle = 'rgba(255,255,255,0.14)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+
+  if (currentTheme === 'neon') {
+    context.shadowBlur = 14;
+    context.shadowColor = color;
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.shadowBlur = 0;
+  } else if (currentTheme === 'pastel') {
+    context.fillStyle = color;
+    context.beginPath();
+    context.roundRect(x * size + 1, y * size + 1, size - 2, size - 2, 5);
+    context.fill();
+    context.fillStyle = 'rgba(255,255,255,0.25)';
+    context.beginPath();
+    context.roundRect(x * size + 1, y * size + 1, size - 2, 4, [5, 5, 0, 0]);
+    context.fill();
+  } else if (currentTheme === 'pixel') {
+    // 4-quadrant pixel texture
+    const bx = x * size + 1, by = y * size + 1, bs = size - 2;
+    const half = Math.floor(bs / 2);
+    context.fillStyle = color;
+    context.fillRect(bx, by, bs, bs);
+    context.fillStyle = 'rgba(255,255,255,0.3)';
+    context.fillRect(bx, by, half, half);
+    context.fillStyle = 'rgba(0,0,0,0.3)';
+    context.fillRect(bx + half, by + half, bs - half, bs - half);
+    context.fillStyle = 'rgba(0,0,0,0.15)';
+    context.fillRect(bx + 3, by + 3, bs - 6, bs - 6);
+  } else {
+    // retro (default)
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.fillStyle = 'rgba(255,255,255,0.14)';
+    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  }
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = currentTheme === 'neon' ? '#111' : '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath(); ctx.moveTo(c * BLOCK, 0); ctx.lineTo(c * BLOCK, ROWS * BLOCK); ctx.stroke();
@@ -704,6 +727,18 @@ function selectMode(mode) {
   init();
 }
 
+// ─── Theme system ─────────────────────────────────────────────────────────────
+
+function applyTheme(name) {
+  currentTheme = name;
+  localStorage.setItem('tetris-theme', name);
+  document.body.classList.remove('theme-retro', 'theme-neon', 'theme-pastel', 'theme-pixel');
+  document.body.classList.add(`theme-${name}`);
+  const sel = document.getElementById('theme-select');
+  if (sel) sel.value = name;
+  if (board && current && !gameOver) draw();
+}
+
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {
@@ -763,3 +798,9 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 document.querySelectorAll('.ability-btn').forEach(btn => {
   btn.addEventListener('click', () => selectAbility(parseInt(btn.dataset.ability)));
 });
+
+document.getElementById('theme-select').addEventListener('change', e => {
+  applyTheme(e.target.value);
+});
+
+applyTheme(localStorage.getItem('tetris-theme') || 'retro');

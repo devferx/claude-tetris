@@ -375,3 +375,35 @@ kbd {
   font-weight: 400;
   letter-spacing: 0;
 }
+
+/* ---- Theme classes ---- */
+body.theme-neon {
+  background: #000;
+}
+body.theme-neon #board,
+body.theme-neon #next-canvas,
+body.theme-neon #hold-canvas {
+  background: #000;
+  border-color: #111;
+}
+body.theme-pastel {
+  background: #1a1020;
+}
+body.theme-pixel {
+  background: #0f0f17;
+}
+
+/* ---- Theme selector ---- */
+#theme-select {
+  background: #1e1e2e;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+  padding: 4px 8px;
+  width: 100%;
+  cursor: pointer;
+}
+#theme-select:hover {
+  border-color: #7aa2f7;
+}
