@@ -5,22 +5,19 @@ const ROWS = 20;
 const BLOCK = 30;
 const MAX_ENERGY = 100;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // 1 I
-  '#ffd54f', // 2 O
-  '#ba68c8', // 3 T
-  '#81c784', // 4 S
-  '#e57373', // 5 Z
-  '#7986cb', // 6 J
-  '#ffb74d', // 7 L
-  '#f48fb1', // 8 + cross
-  '#80cbc4', // 9 U
-  '#ce93d8', // 10 Y
-  '#fff176', // 11 1×1
-  '#ff8a65', // 12 hollow 3×3
-  null,      // 13 power-up (rendered as rainbow)
-];
+const THEME_COLORS = {
+  retro:  [null,'#4dd0e1','#ffd54f','#ba68c8','#81c784','#e57373','#7986cb','#ffb74d','#f48fb1','#80cbc4','#ce93d8','#fff176','#ff8a65',null],
+  neon:   [null,'#00fff5','#ffe600','#df00ff','#00ff6a','#ff0055','#2979ff','#ff6d00','#ff80ab','#00e5ff','#ea80fc','#ffff00','#ff3d00',null],
+  pastel: [null,'#b2ebf2','#fff9c4','#e1bee7','#c8e6c9','#ffcdd2','#c5cae9','#ffe0b2','#fce4ec','#b2dfdb','#f3e5f5','#fffde7','#fbe9e7',null],
+};
+
+let currentTheme = 'retro';
+
+function getThemeColor(colorIndex) {
+  if (colorIndex === 13) return `hsl(${(Date.now() / 15) % 360}, 100%, 60%)`;
+  const palette = THEME_COLORS[currentTheme] || THEME_COLORS.retro;
+  return palette[colorIndex] || null;
+}
 
 const PIECES = [
   null,
@@ -84,6 +81,9 @@ let gameMode = 'classic';
 let sprintTimeLeft;
 let survivalInterval, chaosFlipInterval;
 let rotateDirection;
+
+// High-score tracking
+let maxCombo, maxLines;
 
 // ─── Piece factories ──────────────────────────────────────────────────────────
 
@@ -177,6 +177,7 @@ function clearLines() {
     }
   }
   if (cleared) {
+    if (cleared > maxLines) maxLines = cleared;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
@@ -239,6 +240,7 @@ function lockPiece() {
 
   if (linesCleared > 0) {
     comboCount++;
+    if (comboCount > maxCombo) maxCombo = comboCount;
     if (comboCount >= 2) {
       score += 50 * comboCount * level;
       updateHUD();
@@ -453,23 +455,49 @@ function showAnnounce(text) {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  let color;
-  if (colorIndex === 13) {
-    color = `hsl(${(Date.now() / 15) % 360}, 100%, 60%)`;
-  } else {
-    color = COLORS[colorIndex];
-    if (!color) return;
-  }
+  const color = getThemeColor(colorIndex);
+  if (!color) return;
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  context.fillStyle = 'rgba(255,255,255,0.14)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+
+  if (currentTheme === 'neon') {
+    context.shadowBlur = 14;
+    context.shadowColor = color;
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.shadowBlur = 0;
+  } else if (currentTheme === 'pastel') {
+    context.fillStyle = color;
+    context.beginPath();
+    context.roundRect(x * size + 1, y * size + 1, size - 2, size - 2, 5);
+    context.fill();
+    context.fillStyle = 'rgba(255,255,255,0.25)';
+    context.beginPath();
+    context.roundRect(x * size + 1, y * size + 1, size - 2, 4, [5, 5, 0, 0]);
+    context.fill();
+  } else if (currentTheme === 'pixel') {
+    // 4-quadrant pixel texture
+    const bx = x * size + 1, by = y * size + 1, bs = size - 2;
+    const half = Math.floor(bs / 2);
+    context.fillStyle = color;
+    context.fillRect(bx, by, bs, bs);
+    context.fillStyle = 'rgba(255,255,255,0.3)';
+    context.fillRect(bx, by, half, half);
+    context.fillStyle = 'rgba(0,0,0,0.3)';
+    context.fillRect(bx + half, by + half, bs - half, bs - half);
+    context.fillStyle = 'rgba(0,0,0,0.15)';
+    context.fillRect(bx + 3, by + 3, bs - 6, bs - 6);
+  } else {
+    // retro (default)
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.fillStyle = 'rgba(255,255,255,0.14)';
+    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  }
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = currentTheme === 'neon' ? '#111' : '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath(); ctx.moveTo(c * BLOCK, 0); ctx.lineTo(c * BLOCK, ROWS * BLOCK); ctx.stroke();
@@ -574,6 +602,97 @@ function selectAbility(n) {
   closeAbilityMenu();
 }
 
+// ─── High-score table ─────────────────────────────────────────────────────────
+
+function loadScores() {
+  try { return JSON.parse(localStorage.getItem('tetris-scores') || '[]'); }
+  catch { return []; }
+}
+
+// Returns the saved score object (used to highlight row after saving)
+function saveScore(name) {
+  const scores = loadScores();
+  const entry = { name: (name || '').trim() || 'AAA', score, lines, combo: maxCombo, maxLines };
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  scores.splice(5); // keep top 5
+  localStorage.setItem('tetris-scores', JSON.stringify(scores));
+  return entry;
+}
+
+function resetScores() {
+  localStorage.removeItem('tetris-scores');
+  renderScoreTables();
+}
+
+function renderScoreTable(container, highlightEntry) {
+  if (!container) return;
+  container.innerHTML = '';
+
+  const scores = loadScores();
+
+  // Global bests row
+  const bestCombo = scores.reduce((m, s) => Math.max(m, s.combo || 0), 0);
+  const bestLines  = scores.reduce((m, s) => Math.max(m, s.maxLines || 0), 0);
+
+  const meta = document.createElement('div');
+  meta.className = 'lb-meta';
+  if (scores.length > 0) {
+    meta.innerHTML =
+      `<span>Best combo: <strong>${bestCombo}</strong></span>` +
+      `<span>Max lines clear: <strong>${bestLines}</strong></span>`;
+  }
+  container.appendChild(meta);
+
+  if (scores.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'lb-empty';
+    empty.textContent = 'Sin puntuaciones todavía';
+    container.appendChild(empty);
+  } else {
+    const table = document.createElement('table');
+    table.className = 'lb-table';
+    table.innerHTML =
+      '<thead><tr>' +
+        '<th>#</th><th>Nombre</th><th>Score</th><th>Líneas</th><th>Combo</th>' +
+      '</tr></thead>';
+    const tbody = document.createElement('tbody');
+    const highlightIdx = highlightEntry
+      ? scores.findIndex(s => s.name === highlightEntry.name && s.score === highlightEntry.score)
+      : -1;
+    scores.forEach((s, i) => {
+      const tr = document.createElement('tr');
+      if (i === highlightIdx) {
+        tr.classList.add('highlight');
+      }
+      tr.innerHTML =
+        `<td>${i + 1}</td>` +
+        `<td>${escapeHtml(s.name)}</td>` +
+        `<td>${s.score.toLocaleString()}</td>` +
+        `<td>${s.lines}</td>` +
+        `<td>${s.combo || 0}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Borrar records';
+  resetBtn.className = 'ability-btn reset-scores-btn';
+  resetBtn.addEventListener('click', resetScores);
+  container.appendChild(resetBtn);
+}
+
+function renderScoreTables() {
+  renderScoreTable(document.getElementById('start-leaderboard'), null);
+  renderScoreTable(document.getElementById('overlay-leaderboard'), null);
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ─── Game lifecycle ───────────────────────────────────────────────────────────
 
 function endGame(title, win) {
@@ -585,6 +704,47 @@ function endGame(title, win) {
   overlayTitle.classList.toggle('win', !!win);
   overlayScore.textContent = `Score: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+
+  // Show score entry form
+  const entryDiv = document.getElementById('overlay-score-entry');
+  entryDiv.innerHTML = '';
+
+  const scores = loadScores();
+  const wouldRank = scores.length < 5 || score >= scores[scores.length - 1].score;
+
+  if (wouldRank) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 12;
+    input.placeholder = 'Tu nombre (máx 12)';
+    input.className = 'score-name-input';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Guardar puntuación';
+    saveBtn.className = 'ability-btn score-save-btn';
+
+    const row = document.createElement('div');
+    row.className = 'score-entry-row';
+    row.appendChild(input);
+    row.appendChild(saveBtn);
+    entryDiv.appendChild(row);
+
+    let saved = false;
+    const doSave = () => {
+      if (saved) return;
+      saved = true;
+      const savedScore = saveScore(input.value);
+      entryDiv.innerHTML = '<p class="score-saved-msg">Puntuación guardada!</p>';
+      renderScoreTable(document.getElementById('overlay-leaderboard'), savedScore);
+    };
+
+    saveBtn.addEventListener('click', doSave);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+    // Focus after a short delay so overlay transition doesn't steal it
+    setTimeout(() => input.focus(), 80);
+  } else {
+    renderScoreTable(document.getElementById('overlay-leaderboard'), null);
+  }
 }
 
 function togglePause() {
@@ -652,6 +812,8 @@ function init() {
   comboCount          = 0;
   lastClearWasTetris  = false;
   lastActionWasRotate = false;
+  maxCombo            = 0;
+  maxLines            = 0;
 
   pieceQueue           = [];
   powerUpLineThreshold = 10;
@@ -695,6 +857,7 @@ function init() {
   spawn();
   updateHUD();
   drawHold();
+  renderScoreTables();
 
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
@@ -704,6 +867,18 @@ function selectMode(mode) {
   gameMode = mode;
   document.getElementById('mode-select').classList.add('hidden');
   init();
+}
+
+// ─── Theme system ─────────────────────────────────────────────────────────────
+
+function applyTheme(name) {
+  currentTheme = name;
+  localStorage.setItem('tetris-theme', name);
+  document.body.classList.remove('theme-retro', 'theme-neon', 'theme-pastel', 'theme-pixel');
+  document.body.classList.add(`theme-${name}`);
+  const sel = document.getElementById('theme-select');
+  if (sel) sel.value = name;
+  if (board && current && !gameOver) draw();
 }
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
@@ -795,3 +970,12 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 document.querySelectorAll('.ability-btn').forEach(btn => {
   btn.addEventListener('click', () => selectAbility(parseInt(btn.dataset.ability)));
 });
+
+document.getElementById('theme-select').addEventListener('change', e => {
+  applyTheme(e.target.value);
+});
+
+applyTheme(localStorage.getItem('tetris-theme') || 'retro');
+
+// Show leaderboard on the initial start screen
+renderScoreTables();
