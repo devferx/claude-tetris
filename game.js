@@ -54,13 +54,9 @@ const overlay    = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
-const pauseMenu  = document.getElementById('pause-menu');
 
 // Core state
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
-
-// Starting level (set via pause menu; used at game init)
-let startingLevel = 1;
 
 // Hold
 let heldPiece, holdUsed;
@@ -593,10 +589,13 @@ function togglePause() {
   if (!paused) {
     lastTime = performance.now();
     animId = requestAnimationFrame(loop);
-    pauseMenu.classList.add('hidden');
+    overlay.classList.add('hidden');
   } else {
     cancelAnimationFrame(animId);
-    pauseMenu.classList.remove('hidden');
+    overlayTitle.textContent = 'PAUSA';
+    overlayTitle.classList.remove('win');
+    overlayScore.textContent = '';
+    overlay.classList.remove('hidden');
   }
 }
 
@@ -639,10 +638,10 @@ function init() {
   board        = createBoard();
   score        = 0;
   lines        = 0;
-  level        = startingLevel;
+  level        = 1;
   paused       = false;
   gameOver     = false;
-  dropInterval = Math.max(100, 1000 - (startingLevel - 1) * 90);
+  dropInterval = 1000;
   dropAccum    = 0;
   lastTime     = performance.now();
 
@@ -686,7 +685,6 @@ function init() {
   document.getElementById('mode-label').textContent = gameMode.toUpperCase();
   document.getElementById('ability-menu').classList.add('hidden');
   overlay.classList.add('hidden');
-  pauseMenu.classList.add('hidden');
   overlayTitle.classList.remove('win');
 
   next = pieceQueue[0];
@@ -712,14 +710,12 @@ document.addEventListener('keydown', e => {
   if (!board) return;
 
   if (abilityMenuOpen) {
-    if (e.code === 'Escape') { closeAbilityMenu(); return; }
     const n = parseInt(e.key);
     if (n >= 1 && n <= 5) selectAbility(n);
     return;
   }
 
   if (e.code === 'KeyP') { togglePause(); return; }
-  if (e.code === 'Escape') { e.preventDefault(); togglePause(); return; }
   if (paused || gameOver) return;
 
   switch (e.code) {
@@ -759,34 +755,6 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
-
-// ─── Pause menu setup ─────────────────────────────────────────────────────────
-
-// Populate starting-level dropdown (levels 1–15)
-const startingLevelSelect = document.getElementById('starting-level-select');
-for (let i = 1; i <= 15; i++) {
-  const opt = document.createElement('option');
-  opt.value = i;
-  opt.textContent = i;
-  if (i === 1) opt.selected = true;
-  startingLevelSelect.appendChild(opt);
-}
-startingLevelSelect.addEventListener('change', () => {
-  startingLevel = parseInt(startingLevelSelect.value, 10);
-});
-
-document.getElementById('pause-resume-btn').addEventListener('click', () => {
-  togglePause();
-});
-
-document.getElementById('pause-restart-btn').addEventListener('click', () => {
-  init();
-});
-
-document.getElementById('pause-controls-btn').addEventListener('click', () => {
-  const list = document.getElementById('pause-controls-list');
-  list.classList.toggle('hidden');
-});
 
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => selectMode(btn.dataset.mode));
