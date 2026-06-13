@@ -38,6 +38,63 @@ const PIECES = [
   [[12,12,12],[12,0,12],[12,12,12]],           // 12 hollow 3×3
 ];
 
+const THEMES = {
+  retro: {
+    name: 'RETRO',
+    colors: COLORS,
+    grid: '#22222e',
+    drawBlock(ctx, x, y, color, size) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+    },
+  },
+  neon: {
+    name: 'NEON',
+    colors: [null, '#00ffff', '#ffff00', '#ff00ff', '#00ff88', '#ff2244', '#4466ff', '#ff8800', '#ff44bb', '#44ffdd', '#dd44ff', '#ffff44', '#ff6600', null],
+    grid: '#0a1a0a',
+    drawBlock(ctx, x, y, color, size) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = color;
+      ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+    },
+  },
+  pastel: {
+    name: 'PASTEL',
+    colors: [null, '#a8d8ea', '#fce4a0', '#d4a8d8', '#b8e4b8', '#f4b8b8', '#a8b8e4', '#f4c8a0', '#f4c0d0', '#a8d8d4', '#d4b8e4', '#f8f0a8', '#f4c0a8', null],
+    grid: '#e0d8ec',
+    drawBlock(ctx, x, y, color, size) {
+      const px = x * size + 2, py = y * size + 2, w = size - 4, h = size - 4;
+      ctx.beginPath();
+      ctx.roundRect(px, py, w, h, 5);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(px + 2, py + 2, w - 4, 4);
+    },
+  },
+  pixel: {
+    name: 'PIXEL',
+    colors: [null, '#00ccff', '#ffdd00', '#cc00ff', '#00cc44', '#ff3333', '#4444ff', '#ff8800', '#ff66bb', '#00ddbb', '#bb44ee', '#eeff44', '#ff5544', null],
+    grid: '#1a1a1a',
+    drawBlock(ctx, x, y, color, size) {
+      const px = x * size + 1, py = y * size + 1, w = size - 2, h = size - 2;
+      ctx.fillStyle = color;
+      ctx.fillRect(px, py, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(px, py, w, 3);
+      ctx.fillRect(px, py, 3, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(px + w - 3, py, 3, h);
+      ctx.fillRect(px, py + h - 3, w, 3);
+    },
+  },
+};
+
+let currentThemeName = localStorage.getItem('tetris-theme') || 'retro';
+
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
 // DOM refs
@@ -501,23 +558,22 @@ function showAnnounce(text) {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
+  const t = THEMES[currentThemeName];
   let color;
   if (colorIndex === 13) {
     color = `hsl(${(Date.now() / 15) % 360}, 100%, 60%)`;
   } else {
-    color = COLORS[colorIndex];
+    color = t.colors[colorIndex];
     if (!color) return;
   }
+  context.save();
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  context.fillStyle = 'rgba(255,255,255,0.14)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  t.drawBlock(context, x, y, color, size);
+  context.restore();
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = THEMES[currentThemeName].grid;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath(); ctx.moveTo(c * BLOCK, 0); ctx.lineTo(c * BLOCK, ROWS * BLOCK); ctx.stroke();
@@ -567,6 +623,17 @@ function drawNext() { drawPreview(nextCtx, nextCanvas, next); }
 function drawHold() {
   holdCanvas.classList.toggle('hold-locked', holdUsed);
   drawPreview(holdCtx, holdCanvas, heldPiece);
+}
+
+function applyTheme(name) {
+  currentThemeName = name;
+  localStorage.setItem('tetris-theme', name);
+  document.body.classList.remove('theme-neon', 'theme-pastel', 'theme-pixel');
+  if (name !== 'retro') document.body.classList.add('theme-' + name);
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === name);
+  });
+  if (board && current) { draw(); drawNext(); drawHold(); }
 }
 
 // ─── Ability menu ─────────────────────────────────────────────────────────────
@@ -882,3 +949,9 @@ document.getElementById('reset-scores-btn').addEventListener('click', () => {
 });
 
 renderScoreTable('start-hs-table', null);
+
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+});
+
+applyTheme(currentThemeName);
