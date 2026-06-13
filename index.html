@@ -73,9 +73,18 @@
     <div id="powerup-announce"></div>
 
     <div id="overlay" class="overlay hidden">
-      <div class="overlay-box">
+      <div class="overlay-box gameover-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <p id="overlay-stats"></p>
+        <div id="new-record-section" class="hidden">
+          <p class="new-record-label">NEW RECORD</p>
+          <div class="name-input-row">
+            <input type="text" id="player-name" maxlength="12" placeholder="Your name..." autocomplete="off" spellcheck="false" />
+            <button id="save-score-btn">SAVE</button>
+          </div>
+        </div>
+        <div id="gameover-hs-table" class="hs-table"></div>
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
@@ -112,6 +121,13 @@
           <button class="mode-btn mode-chaos" data-mode="chaos">
             CHAOS <span class="mode-desc">Rotación se invierte cada 20s</span>
           </button>
+        </div>
+        <div class="hs-section">
+          <div class="hs-header">
+            <span class="label">HIGH SCORES</span>
+            <button id="reset-scores-btn" class="reset-btn">RESET</button>
+          </div>
+          <div id="start-hs-table" class="hs-table"></div>
         </div>
       </div>
     </div>

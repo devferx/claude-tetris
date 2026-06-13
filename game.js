@@ -55,6 +55,54 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
+// ─── High Scores ──────────────────────────────────────────────────────────────
+
+function loadScores() {
+  try { return JSON.parse(localStorage.getItem('tetris_scores')) || []; }
+  catch { return []; }
+}
+
+function saveScores(scores) {
+  localStorage.setItem('tetris_scores', JSON.stringify(scores));
+}
+
+function isTopScore(s) {
+  const scores = loadScores();
+  return scores.length < 5 || s > scores[scores.length - 1].score;
+}
+
+function addScore(entry) {
+  const scores = loadScores();
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  scores.splice(5);
+  saveScores(scores);
+  return scores.findIndex(s => s.ts === entry.ts);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderScoreTable(containerId, highlightIndex) {
+  const scores = loadScores();
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (scores.length === 0) {
+    el.innerHTML = '<p class="hs-empty">No records yet</p>';
+    return;
+  }
+  el.innerHTML = scores.map((s, i) => `
+    <div class="hs-row${i === highlightIndex ? ' hs-highlight' : ''}">
+      <span class="hs-rank">#${i + 1}</span>
+      <span class="hs-name">${escapeHtml(s.name)}</span>
+      <span class="hs-score">${s.score.toLocaleString()}</span>
+      <span class="hs-meta">${s.lines}L &times;${s.maxCombo}</span>
+    </div>`).join('');
+}
+
 // Core state
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -62,7 +110,7 @@ let board, current, next, score, lines, level, paused, gameOver, lastTime, dropA
 let heldPiece, holdUsed;
 
 // Combo
-let comboCount, lastClearWasTetris, lastActionWasRotate;
+let comboCount, maxCombo, lastClearWasTetris, lastActionWasRotate;
 
 // Piece queue
 let pieceQueue;
@@ -235,6 +283,7 @@ function lockPiece() {
 
   if (linesCleared > 0) {
     comboCount++;
+    if (comboCount > maxCombo) maxCombo = comboCount;
     if (comboCount >= 2) {
       score += 50 * comboCount * level;
       updateHUD();
@@ -577,9 +626,24 @@ function endGame(title, win) {
   cancelAnimationFrame(animId);
   if (survivalInterval) { clearInterval(survivalInterval); survivalInterval = null; }
   if (chaosFlipInterval) { clearInterval(chaosFlipInterval); chaosFlipInterval = null; }
+
   overlayTitle.textContent = title || 'GAME OVER';
   overlayTitle.classList.toggle('win', !!win);
   overlayScore.textContent = `Score: ${score.toLocaleString()}`;
+  document.getElementById('overlay-stats').textContent =
+    `Lines: ${lines}  |  Best combo: \xd7${maxCombo}`;
+
+  const newRecordSection = document.getElementById('new-record-section');
+  const nameInput = document.getElementById('player-name');
+  if (isTopScore(score)) {
+    newRecordSection.classList.remove('hidden');
+    nameInput.value = '';
+    setTimeout(() => nameInput.focus(), 50);
+  } else {
+    newRecordSection.classList.add('hidden');
+  }
+
+  renderScoreTable('gameover-hs-table', null);
   overlay.classList.remove('hidden');
 }
 
@@ -649,6 +713,7 @@ function init() {
   holdUsed    = false;
 
   comboCount          = 0;
+  maxCombo            = 0;
   lastClearWasTetris  = false;
   lastActionWasRotate = false;
 
@@ -763,3 +828,25 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 document.querySelectorAll('.ability-btn').forEach(btn => {
   btn.addEventListener('click', () => selectAbility(parseInt(btn.dataset.ability)));
 });
+
+function saveCurrentScore() {
+  const nameInput = document.getElementById('player-name');
+  const name = nameInput.value.trim() || 'ANON';
+  const entry = { name, score, lines, maxCombo, mode: gameMode, ts: Date.now() };
+  const idx = addScore(entry);
+  document.getElementById('new-record-section').classList.add('hidden');
+  renderScoreTable('gameover-hs-table', idx);
+}
+
+document.getElementById('save-score-btn').addEventListener('click', saveCurrentScore);
+
+document.getElementById('player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveCurrentScore();
+});
+
+document.getElementById('reset-scores-btn').addEventListener('click', () => {
+  localStorage.removeItem('tetris_scores');
+  renderScoreTable('start-hs-table', null);
+});
+
+renderScoreTable('start-hs-table', null);
