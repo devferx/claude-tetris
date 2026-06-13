@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="refresh" content="0; url=/"></head>
+<body><script>
+  const p = new URLSearchParams(location.search);
+  const t = p.get('t');
+  if (t) localStorage.setItem('tetris-theme', t);
+</script></body></html>
