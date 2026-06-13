@@ -75,6 +75,9 @@ let freezeActive, freezeEnd, slowActive, slowEnd;
 let energy, abilityMenuOpen;
 let boardSnapshot, currentSnapshot;
 
+// Starting level (persists across restarts)
+let startingLevel = 1;
+
 // Challenge mode
 let gameMode = 'classic';
 let sprintTimeLeft;
@@ -586,16 +589,16 @@ function endGame(title, win) {
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
+  const pauseMenu = document.getElementById('pause-menu');
   if (!paused) {
+    pauseMenu.classList.add('hidden');
     lastTime = performance.now();
     animId = requestAnimationFrame(loop);
-    overlay.classList.add('hidden');
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayTitle.classList.remove('win');
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    document.getElementById('pause-controls').classList.add('hidden');
+    document.getElementById('controls-toggle-btn').textContent = 'VIEW CONTROLS';
+    pauseMenu.classList.remove('hidden');
   }
 }
 
@@ -638,10 +641,10 @@ function init() {
   board        = createBoard();
   score        = 0;
   lines        = 0;
-  level        = 1;
+  level        = startingLevel;
   paused       = false;
   gameOver     = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (startingLevel - 1) * 90);
   dropAccum    = 0;
   lastTime     = performance.now();
 
@@ -684,6 +687,7 @@ function init() {
 
   document.getElementById('mode-label').textContent = gameMode.toUpperCase();
   document.getElementById('ability-menu').classList.add('hidden');
+  document.getElementById('pause-menu').classList.add('hidden');
   overlay.classList.add('hidden');
   overlayTitle.classList.remove('win');
 
@@ -715,7 +719,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); return; }
   if (paused || gameOver) return;
 
   switch (e.code) {
@@ -755,6 +759,34 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+document.getElementById('resume-btn').addEventListener('click', togglePause);
+
+document.getElementById('pause-restart-btn').addEventListener('click', () => {
+  document.getElementById('pause-menu').classList.add('hidden');
+  paused = false;
+  init();
+});
+
+document.getElementById('controls-toggle-btn').addEventListener('click', () => {
+  const el = document.getElementById('pause-controls');
+  const nowHidden = el.classList.toggle('hidden');
+  document.getElementById('controls-toggle-btn').textContent = nowHidden ? 'VIEW CONTROLS' : 'HIDE CONTROLS';
+});
+
+document.getElementById('level-dec').addEventListener('click', () => {
+  if (startingLevel > 1) {
+    startingLevel--;
+    document.getElementById('starting-level-display').textContent = startingLevel;
+  }
+});
+
+document.getElementById('level-inc').addEventListener('click', () => {
+  if (startingLevel < 15) {
+    startingLevel++;
+    document.getElementById('starting-level-display').textContent = startingLevel;
+  }
+});
 
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => selectMode(btn.dataset.mode));

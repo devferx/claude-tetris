@@ -80,6 +80,37 @@
       </div>
     </div>
 
+    <div id="pause-menu" class="overlay hidden">
+      <div class="overlay-box pause-box">
+        <p class="pause-menu-title">PAUSED</p>
+        <div class="pause-buttons">
+          <button id="resume-btn" class="pause-menu-btn">RESUME</button>
+          <button id="pause-restart-btn" class="pause-menu-btn">RESTART</button>
+          <button id="controls-toggle-btn" class="pause-menu-btn">VIEW CONTROLS</button>
+        </div>
+        <div id="pause-controls" class="pause-controls hidden">
+          <ul>
+            <li><kbd>←</kbd><kbd>→</kbd> Move</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> Rotate</li>
+            <li><kbd>↓</kbd> Soft drop</li>
+            <li><kbd>Space</kbd> Hard drop</li>
+            <li><kbd>C</kbd><kbd>⇧</kbd> Hold</li>
+            <li><kbd>Q</kbd> Ability</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> Pause</li>
+          </ul>
+        </div>
+        <div class="pause-level-selector">
+          <span class="label">STARTING LEVEL</span>
+          <div class="level-control">
+            <button id="level-dec" class="level-btn">−</button>
+            <span id="starting-level-display">1</span>
+            <button id="level-inc" class="level-btn">+</button>
+          </div>
+          <span class="level-hint">applies to next game</span>
+        </div>
+      </div>
+    </div>
+
     <div id="ability-menu" class="overlay hidden">
       <div class="overlay-box ability-box">
         <p class="overlay-secondary-title">ELIGE HABILIDAD</p>
